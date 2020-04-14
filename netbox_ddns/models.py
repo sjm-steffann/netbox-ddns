@@ -89,6 +89,9 @@ class Zone(models.Model):
         validators=[HostnameValidator()],
         unique=True,
     )
+    ttl = models.PositiveIntegerField(
+        verbose_name=_('TTL'),
+    )
     server = models.ForeignKey(
         to=Server,
         verbose_name=_('DDNS Server'),
@@ -121,6 +124,9 @@ class ReverseZone(models.Model):
         max_length=255,
         blank=True,
         help_text=_("RFC 2317 style reverse DNS, required when the prefix doesn't map to a reverse zone"),
+    )
+    ttl = models.PositiveIntegerField(
+        verbose_name=_('TTL'),
     )
     server = models.ForeignKey(
         to=Server,

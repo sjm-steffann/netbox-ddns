@@ -135,7 +135,7 @@ def update_dns(old_address: IPAddress = None, new_address: IPAddress = None,
                     update = zone.server.create_update(zone.name)
                     update.add(
                         new_dns_name + '.',
-                        300,
+                        zone.ttl,
                         'a' if new_address.version == 4 else 'aaaa',
                         str(new_address)
                     )
@@ -160,7 +160,7 @@ def update_dns(old_address: IPAddress = None, new_address: IPAddress = None,
                     update = zone.server.create_update(zone.name)
                     update.add(
                         record_name + '.',
-                        300,
+                        zone.ttl,
                         'ptr',
                         new_dns_name + '.'
                     )
