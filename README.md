@@ -27,7 +27,3 @@ PLUGINS = [
 
 And finally run `/opt/netbox/upgrade.sh`. This will download and install the plugin and update the database when
 necessary. Don't forget to run `sudo systemctl restart netbox netbox-rq` like `upgrade.sh` tells you!
-
-## Usage
-
-You can find the 
