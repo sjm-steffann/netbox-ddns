@@ -22,16 +22,13 @@ def trigger_ddns_update(instance: IPAddress, **_kwargs):
     if instance.address != old_address or instance.dns_name != old_dns_name:
         # IP address or DNS name has changed
         update_dns.delay(
-            old_address=old_address.ip if old_address else None,
-            new_address=instance.address.ip,
-            old_dns_name=old_dns_name.rstrip('.'),
-            new_dns_name=instance.dns_name.rstrip('.'),
+            old_record=instance.before_save,
+            new_record=instance,
         )
 
 
 @receiver(post_delete, sender=IPAddress)
 def trigger_ddns_delete(instance: IPAddress, **_kwargs):
     update_dns.delay(
-        old_address=instance.address.ip,
-        old_dns_name=instance.dns_name.rstrip('.'),
+        old_record=instance,
     )

@@ -7,10 +7,12 @@ import dns.update
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from dns import rcode
 from dns.tsig import HMAC_MD5, HMAC_SHA1, HMAC_SHA224, HMAC_SHA256, HMAC_SHA384, HMAC_SHA512
-from netaddr.ip import IPAddress
+from netaddr import ip
 
 from ipam.fields import IPNetworkField
+from ipam.models import IPAddress
 from .validators import HostnameAddressValidator, HostnameValidator, validate_base64
 
 logger = logging.getLogger('netbox_ddns')
@@ -23,6 +25,33 @@ TSIG_ALGORITHM_CHOICES = (
     (str(HMAC_SHA384), 'HMAC SHA384'),
     (str(HMAC_SHA512), 'HMAC SHA512'),
 )
+
+ACTION_CREATE = 1
+ACTION_DELETE = 2
+
+ACTION_CHOICES = (
+    (ACTION_CREATE, 'Create'),
+    (ACTION_DELETE, 'Delete'),
+)
+
+
+def get_rcode_display(code):
+    if code is None:
+        return None
+    elif code == rcode.NOERROR:
+        return _('Success')
+    elif code == rcode.SERVFAIL:
+        return _('Server failure')
+    elif code == rcode.NXDOMAIN:
+        return _('Name does not exist')
+    elif code == rcode.NOTIMP:
+        return _('Not implemented')
+    elif code == rcode.REFUSED:
+        return _('Refused')
+    elif code == rcode.NOTAUTH:
+        return _('Server not authoritative')
+    else:
+        return _('Unknown response: {}').format(code)
 
 
 class Server(models.Model):
@@ -60,9 +89,11 @@ class Server(models.Model):
         return f'{self.server} ({self.tsig_key_name})'
 
     def clean(self):
-        # Remove trailing dots from domain-style fields
-        self.server = self.server.rstrip('.').lower()
-        self.tsig_key_name = self.tsig_key_name.rstrip('.').lower()
+        # Remove trailing dots from the server name/address
+        self.server = self.server.lower().rstrip('.')
+
+        # Ensure trailing dots from domain-style fields
+        self.tsig_key_name = self.tsig_key_name.lower().rstrip('.') + '.'
 
     @property
     def address(self) -> Optional[str]:
@@ -107,8 +138,8 @@ class Zone(models.Model):
         return self.name
 
     def clean(self):
-        # Remove trailing dots from domain-style fields
-        self.name = self.name.rstrip('.').lower()
+        # Ensure trailing dots from domain-style fields
+        self.name = self.name.lower().rstrip('.') + '.'
 
     def get_updater(self):
         return self.server.create_update(self.name)
@@ -142,7 +173,7 @@ class ReverseZone(models.Model):
     def __str__(self):
         return f'for {self.prefix}'
 
-    def record_name(self, address: IPAddress):
+    def record_name(self, address: ip.IPAddress):
         record_name = self.name
         if self.prefix.version == 4:
             for pos, octet in enumerate(address.words):
@@ -161,9 +192,6 @@ class ReverseZone(models.Model):
         return record_name
 
     def clean(self):
-        # Remove trailing dots from domain-style fields
-        self.name = self.name.rstrip('.')
-
         if self.prefix.version == 4:
             if self.prefix.prefixlen not in [0, 8, 16, 24] and not self.name:
                 raise ValidationError({
@@ -192,5 +220,51 @@ class ReverseZone(models.Model):
 
                     self.name = f'{nibble}.{self.name}'
 
-        # Store zone names in lowercase
-        self.name = self.name.lower()
+        # Ensure trailing dots from domain-style fields
+        self.name = self.name.lower().rstrip('.') + '.'
+
+
+class DNSStatus(models.Model):
+    ip_address = models.OneToOneField(
+        to=IPAddress,
+        verbose_name=_('IP address'),
+        on_delete=models.CASCADE,
+    )
+    last_update = models.DateTimeField(
+        verbose_name=_('last update'),
+        auto_now=True,
+    )
+
+    forward_action = models.PositiveSmallIntegerField(
+        verbose_name=_('forward record action'),
+        choices=ACTION_CHOICES,
+        blank=True,
+        null=True,
+    )
+    forward_rcode = models.PositiveIntegerField(
+        verbose_name=_('forward record response'),
+        blank=True,
+        null=True,
+    )
+
+    reverse_action = models.PositiveSmallIntegerField(
+        verbose_name=_('reverse record action'),
+        choices=ACTION_CHOICES,
+        blank=True,
+        null=True,
+    )
+    reverse_rcode = models.PositiveIntegerField(
+        verbose_name=_('reverse record response'),
+        blank=True,
+        null=True,
+    )
+
+    class Meta:
+        verbose_name = _('DNS status')
+        verbose_name_plural = _('DNS status')
+
+    def get_forward_rcode_display(self) -> Optional[str]:
+        return get_rcode_display(self.forward_rcode)
+
+    def get_reverse_rcode_display(self) -> Optional[str]:
+        return get_rcode_display(self.reverse_rcode)

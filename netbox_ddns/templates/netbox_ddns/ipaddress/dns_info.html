@@ -1,0 +1,30 @@
+{% if object.dnsstatus %}
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <strong>Dynamic DNS Status</strong>
+        </div>
+        <table class="table table-hover panel-body attr-table">
+            <tbody>
+                <tr>
+                    <td>Last update</td>
+                    <td>
+                        {{ object.dnsstatus.last_update }}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Forward DNS</td>
+                    <td>
+                        {{ object.dnsstatus.get_forward_action_display }}:
+                        {{ object.dnsstatus.get_forward_rcode_display }}
+                    </td>
+                </tr>
+                <tr>
+                    <td>Reverse DNS</td>
+                    <td>
+                        {{ object.dnsstatus.get_reverse_action_display }}:
+                        {{ object.dnsstatus.get_reverse_rcode_display }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+{% endif %}
