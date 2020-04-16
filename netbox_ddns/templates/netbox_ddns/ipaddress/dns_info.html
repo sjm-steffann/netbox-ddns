@@ -14,15 +14,24 @@
                 <tr>
                     <td>Forward DNS</td>
                     <td>
-                        {{ object.dnsstatus.get_forward_action_display }}:
-                        {{ object.dnsstatus.get_forward_rcode_display }}
+                        {% if object.dnsstatus.forward_action is not None %}
+                            {{ object.dnsstatus.get_forward_action_display }}:
+                            {{ object.dnsstatus.get_forward_rcode_display }}
+                        {% else %}
+                            <span class="text-muted">Not created</span>
+                        {% endif %}
                     </td>
                 </tr>
                 <tr>
                     <td>Reverse DNS</td>
                     <td>
-                        {{ object.dnsstatus.get_reverse_action_display }}:
-                        {{ object.dnsstatus.get_reverse_rcode_display }}</td>
+                        {% if object.dnsstatus.reverse_action is not None %}
+                            {{ object.dnsstatus.get_reverse_action_display }}:
+                            {{ object.dnsstatus.get_reverse_rcode_display }}
+                        {% else %}
+                            <span class="text-muted">Not created</span>
+                        {% endif %}
+                    </td>
                 </tr>
             </tbody>
         </table>
