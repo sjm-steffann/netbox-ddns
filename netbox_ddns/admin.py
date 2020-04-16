@@ -4,6 +4,7 @@ from django.contrib import admin, messages
 from django.contrib.admin.filters import SimpleListFilter
 from django.contrib.admin.options import ModelAdmin
 from django.db.models import QuerySet
+from django.db.models.query_utils import Q
 from django.http.request import HttpRequest
 from django.utils.translation import gettext_lazy as _
 
@@ -64,15 +65,16 @@ class ZoneAdmin(admin.ModelAdmin):
             more_specifics = Zone.objects.filter(name__endswith=zone.name).exclude(pk=zone.pk)
 
             # Find all IPAddress objects in this zone but not in the more-specifics
-            addresses = IPAddress.objects.filter(dns_name__endswith=zone.name)
+            addresses = IPAddress.objects.filter(Q(dns_name__endswith=zone.name) |
+                                                 Q(dns_name__endswith=zone.name.rstrip('.')))
             for more_specific in more_specifics:
-                addresses = addresses.exclude(dns_name__endswith=more_specific.name)
+                addresses = addresses.exclude(Q(dns_name__endswith=more_specific.name) |
+                                              Q(dns_name__endswith=more_specific.name.rstrip('.')))
 
             for address in addresses:
                 if address.dns_name:
                     update_dns.delay(
-                        new_address=address.address.ip,
-                        new_dns_name=address.dns_name,
+                        new_record=address,
                         skip_reverse=True
                     )
                     counter += 1
@@ -104,8 +106,7 @@ class ReverseZoneAdmin(admin.ModelAdmin):
             for address in addresses:
                 if address.dns_name:
                     update_dns.delay(
-                        new_address=address.address.ip,
-                        new_dns_name=address.dns_name,
+                        new_record=address,
                         skip_forward=True
                     )
                     counter += 1
