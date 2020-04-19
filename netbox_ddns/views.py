@@ -67,9 +67,8 @@ class IPAddressDNSNameRecreateView(PermissionRequiredMixin, View):
         new_dns_name = normalize_fqdn(ip_address.dns_name)
 
         updated_names = []
-        zoneless_names = []
 
-        if new_dns_name and Zone.objects.find_for_dns_name(new_dns_name):
+        if new_dns_name:
             status, created = DNSStatus.objects.get_or_create(ip_address=ip_address)
 
             dns_create.delay(
@@ -79,28 +78,21 @@ class IPAddressDNSNameRecreateView(PermissionRequiredMixin, View):
             )
 
             updated_names.append(new_dns_name)
-        else:
-            zoneless_names.append(new_dns_name)
 
         for extra in ip_address.extradnsname_set.all():
             new_address = extra.ip_address.address.ip
             new_dns_name = extra.name
 
-            if Zone.objects.find_for_dns_name(new_dns_name):
-                dns_create.delay(
-                    dns_name=new_dns_name,
-                    address=new_address,
-                    status=extra,
-                    reverse=False,
-                )
+            dns_create.delay(
+                dns_name=new_dns_name,
+                address=new_address,
+                status=extra,
+                reverse=False,
+            )
 
-                updated_names.append(new_dns_name)
-            else:
-                zoneless_names.append(new_dns_name)
+            updated_names.append(new_dns_name)
 
         if updated_names:
             messages.info(request, _("Updating DNS for {names}").format(names=', '.join(updated_names)))
-        if zoneless_names:
-            messages.warning(request, _("No DNS zone configured for {names}").format(names=', '.join(zoneless_names)))
 
         return redirect('ipam:ipaddress', pk=ip_address.pk)

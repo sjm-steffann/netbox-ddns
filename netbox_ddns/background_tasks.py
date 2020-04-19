@@ -9,7 +9,7 @@ from django_rq import job
 from dns import rcode
 from netaddr import ip
 
-from netbox_ddns.models import ACTION_CREATE, ACTION_DELETE, DNSStatus, ReverseZone, Zone
+from netbox_ddns.models import ACTION_CREATE, ACTION_DELETE, DNSStatus, RCODE_NO_ZONE, ReverseZone, Zone
 from netbox_ddns.utils import get_soa
 
 logger = logging.getLogger('netbox_ddns')
@@ -29,11 +29,12 @@ def status_update(output: List[str], operation: str, response) -> None:
 
 
 def create_forward(dns_name: str, address: ip.IPAddress, status: Optional[DNSStatus], output: List[str]):
+    if status:
+        status.forward_action = ACTION_CREATE
+
     zone = Zone.objects.find_for_dns_name(dns_name)
     if zone:
         logger.debug(f"Found zone {zone.name} for {dns_name}")
-        if status:
-            status.forward_action = ACTION_CREATE
 
         # Check the SOA, we don't want to write to a parent zone if it has delegated authority
         soa = get_soa(dns_name)
@@ -57,14 +58,17 @@ def create_forward(dns_name: str, address: ip.IPAddress, status: Optional[DNSSta
                 status.forward_rcode = rcode.NOTAUTH
     else:
         logger.debug(f"No zone found for {dns_name}")
+        if status:
+            status.forward_rcode = RCODE_NO_ZONE
 
 
 def delete_forward(dns_name: str, address: ip.IPAddress, status: Optional[DNSStatus], output: List[str]):
+    if status:
+        status.forward_action = ACTION_DELETE
+
     zone = Zone.objects.find_for_dns_name(dns_name)
     if zone:
         logger.debug(f"Found zone {zone.name} for {dns_name}")
-        if status:
-            status.forward_action = ACTION_DELETE
 
         # Check the SOA, we don't want to write to a parent zone if it has delegated authority
         soa = get_soa(dns_name)
@@ -87,15 +91,18 @@ def delete_forward(dns_name: str, address: ip.IPAddress, status: Optional[DNSSta
                 status.forward_rcode = rcode.NOTAUTH
     else:
         logger.debug(f"No zone found for {dns_name}")
+        if status:
+            status.forward_rcode = RCODE_NO_ZONE
 
 
 def create_reverse(dns_name: str, address: ip.IPAddress, status: Optional[DNSStatus], output: List[str]):
+    if status:
+        status.reverse_action = ACTION_CREATE
+
     zone = ReverseZone.objects.find_for_address(address)
-    if zone and dns_name:
+    if zone:
         record_name = zone.record_name(address)
         logger.debug(f"Found zone {zone.name} for {record_name}")
-        if status:
-            status.reverse_action = ACTION_CREATE
 
         # Check the SOA, we don't want to write to a parent zone if it has delegated authority
         soa = get_soa(record_name)
@@ -118,15 +125,18 @@ def create_reverse(dns_name: str, address: ip.IPAddress, status: Optional[DNSSta
                 status.reverse_rcode = rcode.NOTAUTH
     else:
         logger.debug(f"No zone found for {address}")
+        if status:
+            status.reverse_rcode = RCODE_NO_ZONE
 
 
 def delete_reverse(dns_name: str, address: ip.IPAddress, status: Optional[DNSStatus], output: List[str]):
+    if status:
+        status.reverse_action = ACTION_DELETE
+
     zone = ReverseZone.objects.find_for_address(address)
-    if zone and dns_name:
+    if zone:
         record_name = zone.record_name(address)
         logger.debug(f"Found zone {zone.name} for {record_name}")
-        if status:
-            status.reverse_action = ACTION_DELETE
 
         # Check the SOA, we don't want to write to a parent zone if it has delegated authority
         soa = get_soa(record_name)
@@ -148,6 +158,8 @@ def delete_reverse(dns_name: str, address: ip.IPAddress, status: Optional[DNSSta
                 status.reverse_rcode = rcode.NOTAUTH
     else:
         logger.debug(f"No zone found for {address}")
+        if status:
+            status.reverse_rcode = RCODE_NO_ZONE
 
 
 @job

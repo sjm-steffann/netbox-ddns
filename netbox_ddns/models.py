@@ -37,6 +37,9 @@ ACTION_CHOICES = (
     (ACTION_DELETE, 'Delete'),
 )
 
+# Use a private rcode for internal errors
+RCODE_NO_ZONE = 4095
+
 
 def get_rcode_display(code):
     if code is None:
@@ -53,6 +56,8 @@ def get_rcode_display(code):
         return _('Refused')
     elif code == rcode.NOTAUTH:
         return _('Server not authoritative')
+    elif code == RCODE_NO_ZONE:
+        return _('No zone configured')
     else:
         return _('Unknown response: {}').format(code)
 
