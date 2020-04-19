@@ -1,16 +1,17 @@
 import logging
-from typing import Optional
+from typing import List, Optional
 
 import dns.query
 import dns.rdatatype
 import dns.resolver
+from django.db import IntegrityError
 from django.db.models.functions import Length
 from django_rq import job
 from dns import rcode
 from netaddr import ip
 
-from ipam.models import IPAddress
 from netbox_ddns.models import ACTION_CREATE, ACTION_DELETE, DNSStatus, ReverseZone, Zone
+from netbox_ddns.utils import normalize_fqdn
 
 logger = logging.getLogger('netbox_ddns')
 
@@ -29,7 +30,7 @@ def get_zone(dns_name: str) -> Optional[Zone]:
 def get_soa(dns_name: str) -> str:
     parts = dns_name.rstrip('.').split('.')
     for i in range(len(parts)):
-        zone_name = '.'.join(parts[i:]) + '.'
+        zone_name = normalize_fqdn('.'.join(parts[i:]))
 
         try:
             dns.resolver.query(zone_name, dns.rdatatype.SOA)
@@ -55,7 +56,7 @@ def get_reverse_zone(address: ip.IPAddress) -> Optional[ReverseZone]:
     return zones[-1]
 
 
-def status_update(output: list, operation: str, response) -> None:
+def status_update(output: List[str], operation: str, response) -> None:
     code = response.rcode()
 
     if code == dns.rcode.NOERROR:
@@ -68,130 +69,161 @@ def status_update(output: list, operation: str, response) -> None:
     output.append(message)
 
 
+def create_forward(dns_name: str, address: ip.IPAddress, status: Optional[DNSStatus], output: List[str]):
+    zone = get_zone(dns_name)
+    if zone:
+        logger.debug(f"Found zone {zone.name} for {dns_name}")
+        if status:
+            status.forward_action = ACTION_CREATE
+
+        # Check the SOA, we don't want to write to a parent zone if it has delegated authority
+        soa = get_soa(dns_name)
+        if soa == zone.name:
+            record_type = 'A' if address.version == 4 else 'AAAA'
+            update = zone.server.create_update(zone.name)
+            update.add(
+                dns_name,
+                zone.ttl,
+                record_type,
+                str(address)
+            )
+            response = dns.query.udp(update, zone.server.address)
+            status_update(output, f'Adding {dns_name} {record_type} {address}', response)
+            if status:
+                status.forward_rcode = response.rcode()
+        else:
+            logger.warning(f"Can't update zone {zone.name} for {dns_name}, "
+                           f"it has delegated authority for {soa}")
+            if status:
+                status.forward_rcode = rcode.NOTAUTH
+    else:
+        logger.debug(f"No zone found for {dns_name}")
+
+
+def delete_forward(dns_name: str, address: ip.IPAddress, status: Optional[DNSStatus], output: List[str]):
+    zone = get_zone(dns_name)
+    if zone:
+        logger.debug(f"Found zone {zone.name} for {dns_name}")
+        if status:
+            status.forward_action = ACTION_DELETE
+
+        # Check the SOA, we don't want to write to a parent zone if it has delegated authority
+        soa = get_soa(dns_name)
+        if soa == zone.name:
+            record_type = 'A' if address.version == 4 else 'AAAA'
+            update = zone.server.create_update(zone.name)
+            update.delete(
+                dns_name,
+                record_type,
+                str(address)
+            )
+            response = dns.query.udp(update, zone.server.address)
+            status_update(output, f'Deleting {dns_name} {record_type} {address}', response)
+            if status:
+                status.forward_rcode = response.rcode()
+        else:
+            logger.warning(f"Can't update zone {zone.name} {dns_name}, "
+                           f"it has delegated authority for {soa}")
+            if status:
+                status.forward_rcode = rcode.NOTAUTH
+    else:
+        logger.debug(f"No zone found for {dns_name}")
+
+
+def create_reverse(dns_name: str, address: ip.IPAddress, status: Optional[DNSStatus], output: List[str]):
+    zone = get_reverse_zone(address)
+    if zone and dns_name:
+        record_name = zone.record_name(address)
+        logger.debug(f"Found zone {zone.name} for {record_name}")
+        if status:
+            status.reverse_action = ACTION_CREATE
+
+        # Check the SOA, we don't want to write to a parent zone if it has delegated authority
+        soa = get_soa(record_name)
+        if soa == zone.name:
+            update = zone.server.create_update(zone.name)
+            update.add(
+                record_name,
+                zone.ttl,
+                'ptr',
+                dns_name
+            )
+            response = dns.query.udp(update, zone.server.address)
+            status_update(output, f'Adding {record_name} PTR {dns_name}', response)
+            if status:
+                status.reverse_rcode = response.rcode()
+        else:
+            logger.warning(f"Can't update zone {zone.name} for {record_name}, "
+                           f"it has delegated authority for {soa}")
+            if status:
+                status.reverse_rcode = rcode.NOTAUTH
+    else:
+        logger.debug(f"No zone found for {address}")
+
+
+def delete_reverse(dns_name: str, address: ip.IPAddress, status: Optional[DNSStatus], output: List[str]):
+    zone = get_reverse_zone(address)
+    if zone and dns_name:
+        record_name = zone.record_name(address)
+        logger.debug(f"Found zone {zone.name} for {record_name}")
+        if status:
+            status.reverse_action = ACTION_DELETE
+
+        # Check the SOA, we don't want to write to a parent zone if it has delegated authority
+        soa = get_soa(record_name)
+        if soa == zone.name:
+            update = zone.server.create_update(zone.name)
+            update.delete(
+                record_name,
+                'ptr',
+                dns_name
+            )
+            response = dns.query.udp(update, zone.server.address)
+            status_update(output, f'Deleting {record_name} PTR {dns_name}', response)
+            if status:
+                status.reverse_rcode = response.rcode()
+        else:
+            logger.warning(f"Can't update zone {zone.name} for {record_name}, "
+                           f"it has delegated authority for {soa}")
+            if status:
+                status.reverse_rcode = rcode.NOTAUTH
+    else:
+        logger.debug(f"No zone found for {address}")
+
+
 @job
-def update_dns(old_record: IPAddress = None, new_record: IPAddress = None,
-               skip_forward=False, skip_reverse=False):
-    old_address = old_record.address.ip if old_record else None
-    new_address = new_record.address.ip if new_record else None
-    old_dns_name = old_record.dns_name.rstrip('.') + '.' if old_record and old_record.dns_name else ''
-    new_dns_name = new_record.dns_name.rstrip('.') + '.' if new_record and new_record.dns_name else ''
-
+def dns_create(dns_name: str, address: ip.IPAddress, forward=True, reverse=True, status: DNSStatus = None):
     output = []
-    status, created = DNSStatus.objects.get_or_create(ip_address=new_record or old_record)
 
-    # Only delete old records when they are provided and not the same as the new records
-    if old_dns_name and old_address and (old_dns_name != new_dns_name or old_address != new_address):
-        # Delete old forward record
-        if not skip_forward:
-            zone = get_zone(old_dns_name)
-            if zone:
-                logger.debug(f"Found zone {zone.name} for {old_dns_name}")
-                status.forward_action = ACTION_DELETE
+    if forward:
+        create_forward(dns_name, address, status, output)
+    if reverse:
+        create_reverse(dns_name, address, status, output)
 
-                # Check the SOA, we don't want to write to a parent zone if it has delegated authority
-                soa = get_soa(old_dns_name)
-                if soa == zone.name:
-                    update = zone.server.create_update(zone.name)
-                    update.delete(
-                        old_dns_name,
-                        'a' if old_address.version == 4 else 'aaaa',
-                        str(old_address)
-                    )
-                    response = dns.query.udp(update, zone.server.address)
-                    status_update(output, f'Deleting {old_dns_name} {old_address}', response)
-                    status.forward_rcode = response.rcode()
-                else:
-                    logger.warning(f"Can't update zone {zone.name} for {old_dns_name}, "
-                                   f"it has delegated authority for {soa}")
-                    status.forward_rcode = rcode.NOTAUTH
-            else:
-                logger.debug(f"No zone found for {old_dns_name}")
+    if status:
+        try:
+            status.save()
+        except IntegrityError:
+            # Race condition when creating?
+            status.save(force_update=True)
 
-        # Delete old reverse record
-        if not skip_reverse:
-            zone = get_reverse_zone(old_address)
-            if zone and old_dns_name:
-                record_name = zone.record_name(old_address)
-                logger.debug(f"Found zone {zone.name} for {record_name}")
-                status.reverse_action = ACTION_DELETE
+    return ', '.join(output)
 
-                # Check the SOA, we don't want to write to a parent zone if it has delegated authority
-                soa = get_soa(record_name)
-                if soa == zone.name:
-                    update = zone.server.create_update(zone.name)
-                    update.delete(
-                        record_name,
-                        'ptr',
-                        old_dns_name
-                    )
-                    response = dns.query.udp(update, zone.server.address)
-                    status_update(output, f'Deleting {record_name} {old_dns_name}', response)
-                    status.reverse_rcode = response.rcode()
-                else:
-                    logger.warning(f"Can't update zone {zone.name} for {record_name}, "
-                                   f"it has delegated authority for {soa}")
-                    status.reverse_rcode = rcode.NOTAUTH
-            else:
-                logger.debug(f"No zone found for {old_address}")
 
-    # Always try to add, just in case a previous update failed
-    if new_dns_name and new_address:
-        # Add new forward record
-        if not skip_forward:
-            zone = get_zone(new_dns_name)
-            if zone:
-                logger.debug(f"Found zone {zone.name} for {new_dns_name}")
-                status.forward_action = ACTION_CREATE
+@job
+def dns_delete(dns_name: str, address: ip.IPAddress, forward=True, reverse=True, status: DNSStatus = None):
+    output = []
 
-                # Check the SOA, we don't want to write to a parent zone if it has delegated authority
-                soa = get_soa(new_dns_name)
-                if soa == zone.name:
-                    update = zone.server.create_update(zone.name)
-                    update.add(
-                        new_dns_name,
-                        zone.ttl,
-                        'a' if new_address.version == 4 else 'aaaa',
-                        str(new_address)
-                    )
-                    response = dns.query.udp(update, zone.server.address)
-                    status_update(output, f'Adding {new_dns_name} {new_address}', response)
-                    status.forward_rcode = response.rcode()
-                else:
-                    logger.warning(f"Can't update zone {zone.name} for {old_dns_name}, "
-                                   f"it has delegated authority for {soa}")
-                    status.forward_rcode = rcode.NOTAUTH
-            else:
-                logger.debug(f"No zone found for {new_dns_name}")
+    if forward:
+        delete_forward(dns_name, address, status, output)
+    if reverse:
+        delete_reverse(dns_name, address, status, output)
 
-        # Add new reverse record
-        if not skip_reverse:
-            zone = get_reverse_zone(new_address)
-            if zone and new_dns_name:
-                record_name = zone.record_name(new_address)
-                logger.debug(f"Found zone {zone.name} for {record_name}")
-                status.reverse_action = ACTION_CREATE
-
-                # Check the SOA, we don't want to write to a parent zone if it has delegated authority
-                soa = get_soa(record_name)
-                if soa == zone.name:
-                    update = zone.server.create_update(zone.name)
-                    update.add(
-                        record_name,
-                        zone.ttl,
-                        'ptr',
-                        new_dns_name
-                    )
-                    response = dns.query.udp(update, zone.server.address)
-                    status_update(output, f'Adding {record_name} {new_dns_name}', response)
-                    status.reverse_rcode = response.rcode()
-                else:
-                    logger.warning(f"Can't update zone {zone.name} for {record_name}, "
-                                   f"it has delegated authority for {soa}")
-                    status.reverse_rcode = rcode.NOTAUTH
-            else:
-                logger.debug(f"No zone found for {new_address}")
-
-    # Store the status
-    status.save()
+    if status:
+        try:
+            status.save()
+        except IntegrityError:
+            # Race condition when creating?
+            status.save(force_update=True)
 
     return ', '.join(output)

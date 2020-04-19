@@ -1,6 +1,7 @@
 from django.contrib.auth.context_processors import PermWrapper
 
 from extras.plugins import PluginTemplateExtension
+from . import tables
 
 
 # noinspection PyAbstractClass
@@ -9,9 +10,17 @@ class DNSInfo(PluginTemplateExtension):
 
     def left_page(self):
         """
-        An info-box with edit button for the vCenter settings
+        An info-box with the status of the DNS modifications and records
         """
-        return self.render('netbox_ddns/ipaddress/dns_info.html')
+        extra_dns_name_table = tables.PrefixTable(list(self.context['object'].extradnsname_set.all()), orderable=False)
+
+        return (
+                self.render('netbox_ddns/ipaddress/dns_info.html') +
+                self.render('netbox_ddns/ipaddress/dns_extra.html', {
+                    'perms': PermWrapper(self.context['request'].user),
+                    'extra_dns_name_table': extra_dns_name_table,
+                })
+        )
 
 
 template_extensions = [DNSInfo]

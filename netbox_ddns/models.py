@@ -6,6 +6,7 @@ import dns.tsigkeyring
 import dns.update
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from dns import rcode
 from dns.tsig import HMAC_MD5, HMAC_SHA1, HMAC_SHA224, HMAC_SHA256, HMAC_SHA384, HMAC_SHA512
@@ -13,6 +14,7 @@ from netaddr import ip
 
 from ipam.fields import IPNetworkField
 from ipam.models import IPAddress
+from .utils import normalize_fqdn
 from .validators import HostnameAddressValidator, HostnameValidator, validate_base64
 
 logger = logging.getLogger('netbox_ddns')
@@ -93,7 +95,7 @@ class Server(models.Model):
         self.server = self.server.lower().rstrip('.')
 
         # Ensure trailing dots from domain-style fields
-        self.tsig_key_name = self.tsig_key_name.lower().rstrip('.') + '.'
+        self.tsig_key_name = normalize_fqdn(self.tsig_key_name.lower().rstrip('.'))
 
     @property
     def address(self) -> Optional[str]:
@@ -104,7 +106,7 @@ class Server(models.Model):
 
     def create_update(self, zone: str) -> dns.update.Update:
         return dns.update.Update(
-            zone=zone.rstrip('.') + '.',
+            zone=normalize_fqdn(zone),
             keyring=dns.tsigkeyring.from_text({
                 self.tsig_key_name: self.tsig_key
             }),
@@ -131,15 +133,15 @@ class Zone(models.Model):
 
     class Meta:
         ordering = ('name',)
-        verbose_name = _('zone')
-        verbose_name_plural = _('zones')
+        verbose_name = _('forward zone')
+        verbose_name_plural = _('forward zones')
 
     def __str__(self):
         return self.name
 
     def clean(self):
         # Ensure trailing dots from domain-style fields
-        self.name = self.name.lower().rstrip('.') + '.'
+        self.name = normalize_fqdn(self.name)
 
     def get_updater(self):
         return self.server.create_update(self.name)
@@ -221,7 +223,7 @@ class ReverseZone(models.Model):
                     self.name = f'{nibble}.{self.name}'
 
         # Ensure trailing dots from domain-style fields
-        self.name = self.name.lower().rstrip('.') + '.'
+        self.name = normalize_fqdn(self.name)
 
 
 class DNSStatus(models.Model):
@@ -230,6 +232,7 @@ class DNSStatus(models.Model):
         verbose_name=_('IP address'),
         on_delete=models.CASCADE,
     )
+
     last_update = models.DateTimeField(
         verbose_name=_('last update'),
         auto_now=True,
@@ -266,5 +269,69 @@ class DNSStatus(models.Model):
     def get_forward_rcode_display(self) -> Optional[str]:
         return get_rcode_display(self.forward_rcode)
 
+    def get_forward_rcode_html_display(self) -> Optional[str]:
+        output = get_rcode_display(self.forward_rcode)
+        colour = 'green' if self.forward_rcode == rcode.NOERROR else 'red'
+        return format_html('<span style="color:{colour}">{output}</span', colour=colour, output=output)
+
     def get_reverse_rcode_display(self) -> Optional[str]:
         return get_rcode_display(self.reverse_rcode)
+
+    def get_reverse_rcode_html_display(self) -> Optional[str]:
+        output = get_rcode_display(self.reverse_rcode)
+        colour = 'green' if self.reverse_rcode == rcode.NOERROR else 'red'
+        return format_html('<span style="color:{colour}">{output}</span', colour=colour, output=output)
+
+
+class ExtraDNSName(models.Model):
+    ip_address = models.ForeignKey(
+        to=IPAddress,
+        verbose_name=_('IP address'),
+        on_delete=models.CASCADE,
+    )
+    name = models.CharField(
+        verbose_name=_('DNS name'),
+        max_length=255,
+        validators=[HostnameValidator()],
+    )
+
+    last_update = models.DateTimeField(
+        verbose_name=_('last update'),
+        auto_now=True,
+    )
+
+    forward_action = models.PositiveSmallIntegerField(
+        verbose_name=_('forward record action'),
+        choices=ACTION_CHOICES,
+        blank=True,
+        null=True,
+    )
+    forward_rcode = models.PositiveIntegerField(
+        verbose_name=_('forward record response'),
+        blank=True,
+        null=True,
+    )
+
+    before_save = None
+
+    class Meta:
+        unique_together = (
+            ('ip_address', 'name'),
+        )
+        verbose_name = _('extra DNS name')
+        verbose_name_plural = _('extra DNS names')
+
+    def __str__(self):
+        return self.name
+
+    def clean(self):
+        # Ensure trailing dots from domain-style fields
+        self.name = normalize_fqdn(self.name)
+
+    def get_forward_rcode_display(self) -> Optional[str]:
+        return get_rcode_display(self.forward_rcode)
+
+    def get_forward_rcode_html_display(self) -> Optional[str]:
+        output = get_rcode_display(self.forward_rcode)
+        colour = 'green' if self.forward_rcode == rcode.NOERROR else 'red'
+        return format_html('<span style="color:{colour}">{output}</span', colour=colour, output=output)
