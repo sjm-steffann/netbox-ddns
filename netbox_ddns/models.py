@@ -6,6 +6,7 @@ import dns.tsigkeyring
 import dns.update
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models.functions import Length
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from dns import rcode
@@ -115,6 +116,18 @@ class Server(models.Model):
         )
 
 
+class ZoneQuerySet(models.QuerySet):
+    def find_for_dns_name(self, dns_name: str) -> Optional['Zone']:
+        # Generate all possible zones
+        zones = []
+        parts = dns_name.lower().split('.')
+        for i in range(len(parts)):
+            zones.append('.'.join(parts[-i - 1:]))
+
+        # Find the zone, if any
+        return self.filter(name__in=zones).order_by(Length('name').desc()).first()
+
+
 class Zone(models.Model):
     name = models.CharField(
         verbose_name=_('zone name'),
@@ -131,6 +144,8 @@ class Zone(models.Model):
         on_delete=models.PROTECT,
     )
 
+    objects = ZoneQuerySet.as_manager()
+
     class Meta:
         ordering = ('name',)
         verbose_name = _('forward zone')
@@ -145,6 +160,17 @@ class Zone(models.Model):
 
     def get_updater(self):
         return self.server.create_update(self.name)
+
+
+class ReverseZoneQuerySet(models.QuerySet):
+    def find_for_address(self, address: ip.IPAddress) -> Optional['ReverseZone']:
+        # Find the zone, if any
+        zones = list(ReverseZone.objects.filter(prefix__net_contains=address))
+        if not zones:
+            return None
+
+        zones.sort(key=lambda zone: zone.prefix.prefixlen)
+        return zones[-1]
 
 
 class ReverseZone(models.Model):
@@ -166,6 +192,8 @@ class ReverseZone(models.Model):
         verbose_name=_('DDNS Server'),
         on_delete=models.PROTECT,
     )
+
+    objects = ReverseZoneQuerySet.as_manager()
 
     class Meta:
         ordering = ('prefix',)

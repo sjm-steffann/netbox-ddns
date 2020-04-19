@@ -5,55 +5,14 @@ import dns.query
 import dns.rdatatype
 import dns.resolver
 from django.db import IntegrityError
-from django.db.models.functions import Length
 from django_rq import job
 from dns import rcode
 from netaddr import ip
 
 from netbox_ddns.models import ACTION_CREATE, ACTION_DELETE, DNSStatus, ReverseZone, Zone
-from netbox_ddns.utils import normalize_fqdn
+from netbox_ddns.utils import get_soa
 
 logger = logging.getLogger('netbox_ddns')
-
-
-def get_zone(dns_name: str) -> Optional[Zone]:
-    # Generate all possible zones
-    zones = []
-    parts = dns_name.lower().split('.')
-    for i in range(len(parts)):
-        zones.append('.'.join(parts[-i - 1:]))
-
-    # Find the zone, if any
-    return Zone.objects.filter(name__in=zones).order_by(Length('name').desc()).first()
-
-
-def get_soa(dns_name: str) -> str:
-    parts = dns_name.rstrip('.').split('.')
-    for i in range(len(parts)):
-        zone_name = normalize_fqdn('.'.join(parts[i:]))
-
-        try:
-            dns.resolver.query(zone_name, dns.rdatatype.SOA)
-            return zone_name
-        except dns.resolver.NoAnswer:
-            # The name exists, but has no SOA. Continue one level further up
-            continue
-        except dns.resolver.NXDOMAIN as e:
-            # Look for a SOA record in the authority section
-            for query, response in e.responses().items():
-                for rrset in response.authority:
-                    if rrset.rdtype == dns.rdatatype.SOA:
-                        return rrset.name.to_text()
-
-
-def get_reverse_zone(address: ip.IPAddress) -> Optional[ReverseZone]:
-    # Find the zone, if any
-    zones = list(ReverseZone.objects.filter(prefix__net_contains=address))
-    if not zones:
-        return None
-
-    zones.sort(key=lambda zone: zone.prefix.prefixlen)
-    return zones[-1]
 
 
 def status_update(output: List[str], operation: str, response) -> None:
@@ -70,7 +29,7 @@ def status_update(output: List[str], operation: str, response) -> None:
 
 
 def create_forward(dns_name: str, address: ip.IPAddress, status: Optional[DNSStatus], output: List[str]):
-    zone = get_zone(dns_name)
+    zone = Zone.objects.find_for_dns_name(dns_name)
     if zone:
         logger.debug(f"Found zone {zone.name} for {dns_name}")
         if status:
@@ -101,7 +60,7 @@ def create_forward(dns_name: str, address: ip.IPAddress, status: Optional[DNSSta
 
 
 def delete_forward(dns_name: str, address: ip.IPAddress, status: Optional[DNSStatus], output: List[str]):
-    zone = get_zone(dns_name)
+    zone = Zone.objects.find_for_dns_name(dns_name)
     if zone:
         logger.debug(f"Found zone {zone.name} for {dns_name}")
         if status:
@@ -131,7 +90,7 @@ def delete_forward(dns_name: str, address: ip.IPAddress, status: Optional[DNSSta
 
 
 def create_reverse(dns_name: str, address: ip.IPAddress, status: Optional[DNSStatus], output: List[str]):
-    zone = get_reverse_zone(address)
+    zone = ReverseZone.objects.find_for_address(address)
     if zone and dns_name:
         record_name = zone.record_name(address)
         logger.debug(f"Found zone {zone.name} for {record_name}")
@@ -162,7 +121,7 @@ def create_reverse(dns_name: str, address: ip.IPAddress, status: Optional[DNSSta
 
 
 def delete_reverse(dns_name: str, address: ip.IPAddress, status: Optional[DNSStatus], output: List[str]):
-    zone = get_reverse_zone(address)
+    zone = ReverseZone.objects.find_for_address(address)
     if zone and dns_name:
         record_name = zone.record_name(address)
         logger.debug(f"Found zone {zone.name} for {record_name}")

@@ -1,4 +1,5 @@
 from django.contrib.auth.context_processors import PermWrapper
+from django.template.context_processors import csrf
 
 from extras.plugins import PluginTemplateExtension
 from . import tables
@@ -7,6 +8,16 @@ from . import tables
 # noinspection PyAbstractClass
 class DNSInfo(PluginTemplateExtension):
     model = 'ipam.ipaddress'
+
+    def buttons(self):
+        """
+        A button to force DNS re-provisioning
+        """
+        context = {
+            'perms': PermWrapper(self.context['request'].user),
+        }
+        context.update(csrf(self.context['request']))
+        return self.render('netbox_ddns/ipaddress/dns_refresh_button.html', context)
 
     def left_page(self):
         """
