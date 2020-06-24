@@ -1,7 +1,7 @@
 import logging
-
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
+from netaddr import IPNetwork
 
 from ipam.models import IPAddress
 from netbox_ddns.background_tasks import dns_create, dns_delete
@@ -21,7 +21,7 @@ def trigger_ddns_update(instance: IPAddress, **_kwargs):
     old_address = instance.before_save.address.ip if instance.before_save else None
     old_dns_name = normalize_fqdn(instance.before_save.dns_name) if instance.before_save else ''
 
-    new_address = instance.address.ip
+    new_address = IPNetwork(instance.address).ip
     new_dns_name = normalize_fqdn(instance.dns_name)
 
     extra_dns_names = {normalize_fqdn(extra.name): extra for extra in instance.extradnsname_set.all()}
