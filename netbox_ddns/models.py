@@ -1,9 +1,7 @@
-import logging
-import socket
-from typing import Optional
-
 import dns.tsigkeyring
 import dns.update
+import logging
+import socket
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.functions import Length
@@ -11,7 +9,8 @@ from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 from dns import rcode
 from dns.tsig import HMAC_MD5, HMAC_SHA1, HMAC_SHA224, HMAC_SHA256, HMAC_SHA384, HMAC_SHA512
-from netaddr import ip
+from netaddr import IPNetwork, ip
+from typing import Optional
 
 from ipam.fields import IPNetworkField
 from ipam.models import IPAddress
@@ -210,7 +209,7 @@ class ReverseZone(models.Model):
 
     def record_name(self, address: ip.IPAddress):
         record_name = self.name
-        if self.prefix.version == 4:
+        if IPNetwork(self.prefix).version == 4:
             for pos, octet in enumerate(address.words):
                 if (pos + 1) * 8 <= self.prefix.prefixlen:
                     continue
@@ -227,7 +226,7 @@ class ReverseZone(models.Model):
         return record_name
 
     def clean(self):
-        if self.prefix.version == 4:
+        if isinstance(self.prefix, IPNetwork) and self.prefix.version == 4:
             if self.prefix.prefixlen not in [0, 8, 16, 24] and not self.name:
                 raise ValidationError({
                     'name': _('Required when prefix length is not 0, 8, 16 or 24'),
@@ -240,7 +239,8 @@ class ReverseZone(models.Model):
                         break
 
                     self.name = f'{octet}.{self.name}'
-        else:
+
+        elif isinstance(self.prefix, IPNetwork) and self.prefix.version == 6:
             if self.prefix.prefixlen % 4 != 0 and not self.name:
                 raise ValidationError({
                     'name': _('Required when prefix length is not a nibble boundary'),
