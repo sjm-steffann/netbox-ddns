@@ -10,7 +10,7 @@ from django.views import View
 from ipam.models import IPAddress
 from netbox_ddns.background_tasks import dns_create
 from netbox_ddns.forms import ExtraDNSNameEditForm
-from netbox_ddns.models import DNSStatus, ExtraDNSName, Zone
+from netbox_ddns.models import DNSStatus, ExtraDNSName
 from netbox_ddns.utils import normalize_fqdn
 from utilities.views import ObjectDeleteView, ObjectEditView
 
@@ -44,7 +44,7 @@ class ExtraDNSNameObjectMixin:
 
 class ExtraDNSNameCreateView(PermissionRequiredMixin, ExtraDNSNameObjectMixin, ObjectEditView):
     permission_required = 'netbox_ddns.add_extradnsname'
-    model = ExtraDNSName
+    queryset = ExtraDNSName.objects.all()
     model_form = ExtraDNSNameEditForm
 
 
@@ -54,7 +54,7 @@ class ExtraDNSNameEditView(ExtraDNSNameCreateView):
 
 class ExtraDNSNameDeleteView(PermissionRequiredMixin, ExtraDNSNameObjectMixin, ObjectDeleteView):
     permission_required = 'netbox_ddns.delete_extradnsname'
-    model = ExtraDNSName
+    queryset = ExtraDNSName.objects.all()
 
 
 class IPAddressDNSNameRecreateView(PermissionRequiredMixin, View):
