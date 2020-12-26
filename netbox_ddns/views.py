@@ -12,9 +12,16 @@ from netbox_ddns.background_tasks import dns_create
 from netbox_ddns.forms import ExtraDNSNameEditForm
 from netbox_ddns.models import DNSStatus, ExtraDNSName
 from netbox_ddns.utils import normalize_fqdn
-from utilities.views import ObjectDeleteView, ObjectEditView
+
+try:
+    # NetBox <= 2.9
+    from utilities.views import ObjectDeleteView, ObjectEditView
+except ImportError:
+    # NetBox >= 2.10
+    from netbox.views.generic import ObjectDeleteView, ObjectEditView
 
 
+# noinspection PyMethodMayBeStatic
 class ExtraDNSNameObjectMixin:
     def get_object(self, kwargs):
         if 'ipaddress_pk' not in kwargs:
@@ -60,6 +67,7 @@ class ExtraDNSNameDeleteView(PermissionRequiredMixin, ExtraDNSNameObjectMixin, O
 class IPAddressDNSNameRecreateView(PermissionRequiredMixin, View):
     permission_required = 'ipam.change_ipaddress'
 
+    # noinspection PyMethodMayBeStatic
     def post(self, request, ipaddress_pk):
         ip_address = get_object_or_404(IPAddress, pk=ipaddress_pk)
 
