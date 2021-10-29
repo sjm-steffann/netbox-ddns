@@ -1,4 +1,4 @@
-VERSION = '1.1.3'
+VERSION = '1.1.4'
 
 try:
     from extras.plugins import PluginConfig
@@ -12,8 +12,8 @@ class NetBoxDDNSConfig(PluginConfig):
     name = 'netbox_ddns'
     verbose_name = 'Dynamic DNS'
     version = VERSION
-    min_version = '2.8'
-    max_version = '2.11.999'
+    min_version = '3.0.0'
+    max_version = '3.0.999'
     author = 'Sander Steffann'
     author_email = 'sander@steffann.nl'
     description = 'Dynamic DNS Connector for NetBox'
