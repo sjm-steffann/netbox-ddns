@@ -4,7 +4,9 @@
     <div class="card">
         <h5 class="card-header">Extra DNS Names</h5>
 
-        {% render_table extra_dns_name_table 'inc/table.html' %}
+        <div class="card-body">
+            {% render_table extra_dns_name_table 'inc/table.html' %}
+        </div>
 
         {% if perms.netbox_ddns.add_extradnsname %}
             <div class="card-footer text-right noprint">
