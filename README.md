@@ -11,7 +11,7 @@ For now all configuration is done in the NetBox admin back-end. A later version 
 
 ## Compatibility
 
-This plugin in compatible with [NetBox](https://netbox.readthedocs.org/) 2.8, 2.9 and 2.10.
+This plugin in compatible with [NetBox](https://netbox.readthedocs.org/) 2.8, 2.9, 2.10 and 2.11.
 
 NetBox 2.10 introduced breaking changes that make it unusable for my own use cases. There is work being done to create
 a fork of NetBox that is friendlier to both network operators and contributors. My future work will be in support of
