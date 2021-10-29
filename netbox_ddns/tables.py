@@ -16,13 +16,13 @@ ACTIONS = """
     {% if perms.netbox_ddns.change_extradnsname %}
         <a href="{% url 'plugins:netbox_ddns:extradnsname_edit' ipaddress_pk=record.ip_address.pk pk=record.pk %}" 
            class="btn btn-xs btn-warning">
-            <i class="glyphicon glyphicon-pencil" aria-hidden="true"></i>
+            <i class="mdi mdi-pencil" aria-hidden="true"></i>
         </a>
     {% endif %}
     {% if perms.netbox_ddns.delete_extradnsname %}
         <a href="{% url 'plugins:netbox_ddns:extradnsname_delete' ipaddress_pk=record.ip_address.pk pk=record.pk %}"
            class="btn btn-xs btn-danger">
-            <i class="glyphicon glyphicon-trash" aria-hidden="true"></i>
+            <i class="mdi mdi-trash-can-outline" aria-hidden="true"></i>
         </a>
     {% endif %}
 """
