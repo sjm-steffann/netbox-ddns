@@ -1,18 +1,16 @@
 {% load render_table from django_tables2 %}
 
 {% if perms.netbox_ddns.view_extradnsname %}
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            <strong>Extra DNS Names</strong>
-        </div>
+    <div class="card">
+        <h5 class="card-header">Extra DNS Names</h5>
 
         {% render_table extra_dns_name_table 'inc/table.html' %}
 
         {% if perms.netbox_ddns.add_extradnsname %}
-            <div class="panel-footer text-right noprint">
+            <div class="card-footer text-right noprint">
                 <a href="{% url 'plugins:netbox_ddns:extradnsname_create' ipaddress_pk=object.pk %}"
                    class="btn btn-xs btn-primary">
-                    <span class="glyphicon glyphicon-plus" aria-hidden="true"></span> Add extra DNS name
+                    <span class="mdi mdi-plus" aria-hidden="true"></span> Add extra DNS name
                 </a>
             </div>
         {% endif %}
