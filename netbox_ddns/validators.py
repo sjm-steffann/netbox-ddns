@@ -12,7 +12,7 @@ class HostnameValidator(RegexValidator):
 
 
 class HostnameAddressValidator(RegexValidator):
-    regex = '^(' + HostnameValidator.regex + '|' + URLValidator.ipv6_re + '|' + URLValidator.host_re + ')$'
+    regex = '^(' + HostnameValidator.regex + '|' + URLValidator.ipv6_re + '|' + URLValidator.ipv4_re + '|' + URLValidator.host_re + ')$'
     message = _('Enter a valid hostname or IP address.')
 
 
