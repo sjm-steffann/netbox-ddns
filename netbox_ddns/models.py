@@ -16,7 +16,7 @@ from typing import Optional
 from ipam.fields import IPNetworkField
 from ipam.models import IPAddress
 from .utils import normalize_fqdn
-from .validators import HostnameAddressValidator, HostnameValidator, validate_base64
+from .validators import HostnameAddressValidator, HostnameValidator, validate_base64, MinValueValidator, MaxValueValidator
 
 logger = logging.getLogger('netbox_ddns')
 
@@ -67,6 +67,14 @@ class Server(models.Model):
         verbose_name=_('DDNS Server'),
         max_length=255,
         validators=[HostnameAddressValidator()],
+    )
+    server_port = models.PositiveIntegerField(
+        verbose_name=_('Server Port'),
+        default=53,
+        validators=[
+            MinValueValidator(53),
+            MaxValueValidator(65535),
+        ]
     )
     tsig_key_name = models.CharField(
         verbose_name=_('TSIG Key Name'),
