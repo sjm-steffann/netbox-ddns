@@ -2,7 +2,7 @@ import base64
 import binascii
 
 from django.core.exceptions import ValidationError
-from django.core.validators import RegexValidator, URLValidator
+from django.core.validators import RegexValidator, URLValidator, MinValueValidator, MaxValueValidator
 from django.utils.translation import gettext_lazy as _
 
 
