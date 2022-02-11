@@ -45,7 +45,7 @@ class ReverseZoneInlineAdmin(admin.TabularInline):
 
 @admin.register(Server, site=admin_site)
 class ServerAdmin(admin.ModelAdmin):
-    list_display = ('server', 'tsig_key_name', 'tsig_algorithm')
+    list_display = ('server', 'server_port', 'tsig_key_name', 'tsig_algorithm')
     inlines = [
         ZoneInlineAdmin,
         ReverseZoneInlineAdmin,
