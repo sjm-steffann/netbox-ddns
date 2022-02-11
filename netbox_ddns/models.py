@@ -7,6 +7,7 @@ from django.db import models
 from django.db.models.functions import Length
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
+from django.urls import reverse
 from dns import rcode
 from dns.tsig import HMAC_MD5, HMAC_SHA1, HMAC_SHA224, HMAC_SHA256, HMAC_SHA384, HMAC_SHA512
 from netaddr import IPNetwork, ip
@@ -364,6 +365,9 @@ class ExtraDNSName(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_absolute_url(self):
+        return reverse('plugins:netbox_ddns:extradnsname_edit', args=[self.ip_address.pk, self.pk])
 
     def clean(self):
         # Ensure trailing dots from domain-style fields
