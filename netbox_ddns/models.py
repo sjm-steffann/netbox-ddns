@@ -67,6 +67,14 @@ class Server(models.Model):
         max_length=255,
         validators=[HostnameAddressValidator()],
     )
+    server_port = models.PositiveIntegerField(
+        verbose_name=_('Server Port'),
+        default=53,
+        validators=[
+            MinValueValidator(53),
+            MaxValueValidator(65535),
+        ]
+    )
     tsig_key_name = models.CharField(
         verbose_name=_('TSIG Key Name'),
         max_length=255,
