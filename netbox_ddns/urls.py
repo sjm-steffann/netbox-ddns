@@ -2,7 +2,6 @@ from django.urls import path
 
 from .views import ExtraDNSNameCreateView, ExtraDNSNameDeleteView, ExtraDNSNameEditView, IPAddressDNSNameRecreateView
 
-app_name = 'netbox_ddns'
 urlpatterns = [
     path(route='ip-addresses/<int:ipaddress_pk>/recreate/',
          view=IPAddressDNSNameRecreateView.as_view(),
