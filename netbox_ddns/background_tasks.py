@@ -47,7 +47,7 @@ def create_forward(dns_name: str, address: ip.IPAddress, status: Optional[DNSSta
                 record_type,
                 str(address)
             )
-            response = dns.query.udp(update, zone.server.address)
+            response = dns.query.udp(update, zone.server.address, port=zone.server.server_port)
             status_update(output, f'Adding {dns_name} {record_type} {address}', response)
             if status:
                 status.forward_rcode = response.rcode()
@@ -80,7 +80,7 @@ def delete_forward(dns_name: str, address: ip.IPAddress, status: Optional[DNSSta
                 record_type,
                 str(address)
             )
-            response = dns.query.udp(update, zone.server.address)
+            response = dns.query.udp(update, zone.server.address, port=zone.server.server_port)
             status_update(output, f'Deleting {dns_name} {record_type} {address}', response)
             if status:
                 status.forward_rcode = response.rcode()
@@ -114,7 +114,7 @@ def create_reverse(dns_name: str, address: ip.IPAddress, status: Optional[DNSSta
                 'ptr',
                 dns_name
             )
-            response = dns.query.udp(update, zone.server.address)
+            response = dns.query.udp(update, zone.server.address, port=zone.server.server_port)
             status_update(output, f'Adding {record_name} PTR {dns_name}', response)
             if status:
                 status.reverse_rcode = response.rcode()
@@ -147,7 +147,7 @@ def delete_reverse(dns_name: str, address: ip.IPAddress, status: Optional[DNSSta
                 'ptr',
                 dns_name
             )
-            response = dns.query.udp(update, zone.server.address)
+            response = dns.query.udp(update, zone.server.address, port=zone.server.server_port)
             status_update(output, f'Deleting {record_name} PTR {dns_name}', response)
             if status:
                 status.reverse_rcode = response.rcode()
