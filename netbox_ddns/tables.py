@@ -1,7 +1,7 @@
 import django_tables2 as tables
 
 from netbox_ddns.models import ExtraDNSName
-from utilities.tables import BaseTable, ToggleColumn
+from netbox.tables import BaseTable, columns
 
 FORWARD_DNS = """
     {% if record.forward_action is not None %}
@@ -29,7 +29,7 @@ ACTIONS = """
 
 
 class PrefixTable(BaseTable):
-    pk = ToggleColumn()
+    pk = columns.ToggleColumn()
     name = tables.Column()
     last_update = tables.Column()
     forward_dns = tables.TemplateColumn(template_code=FORWARD_DNS)
