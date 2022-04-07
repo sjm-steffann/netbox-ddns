@@ -22,7 +22,13 @@ except ImportError:
 
 # noinspection PyMethodMayBeStatic
 class ExtraDNSNameObjectMixin:
-    def get_object(self, **kwargs):
+    def get_object(self, *args, **kwargs):
+        # NetBox < 3.2.0
+        if not kwargs and len(args) == 1:
+            kwargs = args[0]
+        elif len(args) > 1:
+            raise TypeError('Method takes 1 positional argument but more were given')
+
         if 'ipaddress_pk' not in kwargs:
             raise Http404
 
@@ -52,7 +58,10 @@ class ExtraDNSNameCreateView(PermissionRequiredMixin, ExtraDNSNameObjectMixin, O
     permission_required = 'netbox_ddns.add_extradnsname'
     queryset = ExtraDNSName.objects.all()
     form = ExtraDNSNameEditForm
-
+    # NetBox < 3.2.0
+    @property
+    def model_form(self):
+        return self.form
 
 class ExtraDNSNameEditView(ExtraDNSNameCreateView):
     permission_required = 'netbox_ddns.change_extradnsname'
