@@ -22,7 +22,7 @@ except ImportError:
 
 # noinspection PyMethodMayBeStatic
 class ExtraDNSNameObjectMixin:
-    def get_object(self, kwargs):
+    def get_object(self, **kwargs):
         if 'ipaddress_pk' not in kwargs:
             raise Http404
 
@@ -51,7 +51,7 @@ class ExtraDNSNameObjectMixin:
 class ExtraDNSNameCreateView(PermissionRequiredMixin, ExtraDNSNameObjectMixin, ObjectEditView):
     permission_required = 'netbox_ddns.add_extradnsname'
     queryset = ExtraDNSName.objects.all()
-    model_form = ExtraDNSNameEditForm
+    form = ExtraDNSNameEditForm
 
 
 class ExtraDNSNameEditView(ExtraDNSNameCreateView):
