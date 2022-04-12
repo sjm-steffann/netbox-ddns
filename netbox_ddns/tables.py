@@ -1,7 +1,13 @@
 import django_tables2 as tables
 
 from netbox_ddns.models import ExtraDNSName
-from utilities.tables import BaseTable, ToggleColumn
+try:
+    # NetBox >= 3.2.0
+    from netbox.tables import BaseTable
+    from netbox.tables.columns import ToggleColumn
+except ImportError:
+    # NetBox < 3.2.0
+    from utilities.tables import BaseTable, ToggleColumn
 
 FORWARD_DNS = """
     {% if record.forward_action is not None %}

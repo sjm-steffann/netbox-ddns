@@ -3,7 +3,6 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse
-from django.utils.http import is_safe_url
 from django.utils.translation import gettext as _
 from django.views import View
 
@@ -23,7 +22,13 @@ except ImportError:
 
 # noinspection PyMethodMayBeStatic
 class ExtraDNSNameObjectMixin:
-    def get_object(self, kwargs):
+    def get_object(self, *args, **kwargs):
+        # NetBox < 3.2.0
+        if not kwargs and len(args) == 1:
+            kwargs = args[0]
+        elif len(args) > 1:
+            raise TypeError('Method takes 1 positional argument but more were given')
+
         if 'ipaddress_pk' not in kwargs:
             raise Http404
 
@@ -37,9 +42,9 @@ class ExtraDNSNameObjectMixin:
     def get_return_url(self, request, obj=None):
         # First, see if `return_url` was specified as a query parameter or form data. Use this URL only if it's
         # considered safe.
-        query_param = request.GET.get('return_url') or request.POST.get('return_url')
-        if query_param and is_safe_url(url=query_param, allowed_hosts=request.get_host()):
-            return query_param
+        return_url = request.GET.get('return_url') or request.POST.get('return_url')
+        if return_url and return_url.startswith('/'):
+            return return_url
 
         # Otherwise check we have an object and can return to its ip-address
         elif obj is not None and obj.ip_address is not None:
@@ -52,8 +57,11 @@ class ExtraDNSNameObjectMixin:
 class ExtraDNSNameCreateView(PermissionRequiredMixin, ExtraDNSNameObjectMixin, ObjectEditView):
     permission_required = 'netbox_ddns.add_extradnsname'
     queryset = ExtraDNSName.objects.all()
-    model_form = ExtraDNSNameEditForm
-
+    form = ExtraDNSNameEditForm
+    # NetBox < 3.2.0
+    @property
+    def model_form(self):
+        return self.form
 
 class ExtraDNSNameEditView(ExtraDNSNameCreateView):
     permission_required = 'netbox_ddns.change_extradnsname'
