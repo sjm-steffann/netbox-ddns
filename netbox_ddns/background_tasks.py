@@ -37,7 +37,7 @@ def create_forward(dns_name: str, address: ip.IPAddress, status: Optional[DNSSta
         logger.debug(f"Found zone {zone.name} for {dns_name}")
 
         # Check the SOA, we don't want to write to a parent zone if it has delegated authority
-        soa = get_soa(dns_name)
+        soa = get_soa(zone.name)
         if soa == zone.name:
             record_type = 'A' if address.version == 4 else 'AAAA'
             update = zone.server.create_update(zone.name)
@@ -71,7 +71,7 @@ def delete_forward(dns_name: str, address: ip.IPAddress, status: Optional[DNSSta
         logger.debug(f"Found zone {zone.name} for {dns_name}")
 
         # Check the SOA, we don't want to write to a parent zone if it has delegated authority
-        soa = get_soa(dns_name)
+        soa = get_soa(zone.name)
         if soa == zone.name:
             record_type = 'A' if address.version == 4 else 'AAAA'
             update = zone.server.create_update(zone.name)
