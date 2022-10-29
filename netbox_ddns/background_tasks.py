@@ -211,8 +211,7 @@ def create_reverse_delegation(nameservers: List[str], prefix: IPNetwork, status:
     nameservers = {x: get_ip(x) for x in nameservers}
 
     subnets = prefix.subnet(24)
-    has_next = True
-    while has_next:
+    while 1:
         subnet = next(subnets, None)
         if subnet is None:
             break
@@ -221,11 +220,11 @@ def create_reverse_delegation(nameservers: List[str], prefix: IPNetwork, status:
         if zone:
             for nameserver, addresses in nameservers.items():
                 # TODO: check authority
-                nameserver = {}
+                nameserver = {nameserver: address}
                 if check_servers_authoritative(zone.name, addresses):
                     pass
             update = zone.server.create_update(zone.name)
-            for nameserver in nameservers:
+            for nameserver in nameservers.keys():
                 update.add(
                     zone.name,
                     zone.ttl,
