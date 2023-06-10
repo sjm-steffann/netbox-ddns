@@ -113,7 +113,7 @@ class Server(models.Model):
 
     @property
     def address(self) -> Optional[str]:
-        addrinfo = socket.getaddrinfo(self.server, 'domain', proto=socket.IPPROTO_UDP)
+        addrinfo = socket.getaddrinfo(self.server, self.server_port, proto=socket.IPPROTO_UDP)
         for family, _, _, _, sockaddr in addrinfo:
             if family in (socket.AF_INET, socket.AF_INET6) and sockaddr[0]:
                 return sockaddr[0]
