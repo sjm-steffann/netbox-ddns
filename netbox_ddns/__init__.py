@@ -1,4 +1,4 @@
-VERSION = '1.2.8'
+VERSION = '1.2.9'
 
 try:
     from extras.plugins import PluginConfig
