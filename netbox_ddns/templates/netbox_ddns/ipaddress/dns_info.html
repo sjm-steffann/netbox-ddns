@@ -1,3 +1,5 @@
+{% load helpers %}
+
 {% if object.dnsstatus %}
     <div class="card">
         <h5 class="card-header"> Dynamic DNS Status </strong>
@@ -7,7 +9,7 @@
                     <tr>
                         <th scope="row">Last update</th>
                         <td>
-                            {{ object.dnsstatus.last_update }}
+                            {{ object.dnsstatus.last_update|annotated_date }}
                         </td>
                     </tr>
                     <tr>
