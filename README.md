@@ -15,7 +15,8 @@ This plugin in compatible with [NetBox](https://netbox.readthedocs.org/) v3.0.0 
 
 > [!Important]
 > Netbox 4.0 - Admin interface disabled by default<br />
-> Can be re-enabled by specifying `DJANGO_ADMIN_ENABLED = True` in `configuration.py`
+> Can be re-enabled by specifying `DJANGO_ADMIN_ENABLED = True` in `configuration.py`<br />
+> If static files are not loaded, re-run `upgrade.sh` this will copy back the required static assets.
 
 
 ## Installation
