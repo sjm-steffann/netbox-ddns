@@ -14,7 +14,7 @@ For now all configuration is done in the NetBox admin back-end. A later version 
 This plugin in compatible with [NetBox](https://netbox.readthedocs.org/) v3.0.0 and greater, support for Netbox v2.11.0 is dropped in v1.1.4 due to UI implementation.
 
 > [!Important]
-> Netbox 4.0 - Admin interface disabled by default\n
+> Netbox 4.0 - Admin interface disabled by default<br />
 > Can be re-enabled by specifying `DJANGO_ADMIN_ENABLED = True` in `configuration.py`
 
 
