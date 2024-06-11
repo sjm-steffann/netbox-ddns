@@ -1,7 +1,7 @@
 from django.contrib.auth.context_processors import PermWrapper
 from django.template.context_processors import csrf
 
-from extras.plugins import PluginTemplateExtension
+from netbox.plugins.templates import PluginTemplateExtension
 from . import tables
 
 
