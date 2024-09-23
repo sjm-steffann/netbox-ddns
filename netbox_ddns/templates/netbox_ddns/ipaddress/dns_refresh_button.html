@@ -4,7 +4,7 @@
 
         <button type="submit" name="_edit"
                 formaction="{% url 'plugins:netbox_ddns:ipaddress_dnsname_recreate' ipaddress_pk=object.pk %}"
-                class="btn btn-sm btn-secondary">
+                class="btn btn-secondary">
             <span class="mdi mdi-refresh" aria-hidden="true"></span> Recreate DNS
         </button>
     </form>
