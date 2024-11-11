@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import ExtraDNSNameCreateView, ExtraDNSNameDeleteView, ExtraDNSNameEditView, IPAddressDNSNameRecreateView
+from .views import ExtraDNSNameCreateView, ExtraDNSNameDeleteView, ExtraDNSNameEditView, IPAddressDNSNameRecreateView, ExtraDNSNameView
 
 urlpatterns = [
     path(route='ip-addresses/<int:ipaddress_pk>/recreate/',
@@ -15,4 +15,8 @@ urlpatterns = [
     path(route='ip-addresses/<int:ipaddress_pk>/extra/<int:pk>/delete/',
          view=ExtraDNSNameDeleteView.as_view(),
          name='extradnsname_delete'),
+
+    path(route='ip-addresses/<int:ipaddress_pk>/extra/<int:pk>/',
+         view=ExtraDNSNameView.as_view(),
+         name='extradnsname'),
 ]

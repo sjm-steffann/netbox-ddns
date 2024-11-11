@@ -17,7 +17,7 @@ try:
     from utilities.views import ObjectDeleteView, ObjectEditView
 except ImportError:
     # NetBox >= 2.10
-    from netbox.views.generic import ObjectDeleteView, ObjectEditView
+    from netbox.views.generic import ObjectDeleteView, ObjectEditView, ObjectView
 
 
 # noinspection PyMethodMayBeStatic
@@ -62,6 +62,11 @@ class ExtraDNSNameCreateView(PermissionRequiredMixin, ExtraDNSNameObjectMixin, O
     @property
     def model_form(self):
         return self.form
+
+
+class ExtraDNSNameView(PermissionRequiredMixin,ExtraDNSNameObjectMixin,ObjectView):
+    permission_required = 'netbox_ddns.view_extradnsname'
+    queryset = ExtraDNSName.objects.all()
 
 class ExtraDNSNameEditView(ExtraDNSNameCreateView):
     permission_required = 'netbox_ddns.change_extradnsname'
