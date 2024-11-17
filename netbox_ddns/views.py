@@ -76,6 +76,38 @@ class ExtraDNSNameDeleteView(PermissionRequiredMixin, ExtraDNSNameObjectMixin, O
     permission_required = 'netbox_ddns.delete_extradnsname'
     queryset = ExtraDNSName.objects.all()
 
+    # Override request handler to fix the error on delete GET due to missing reverse route argument
+    def get(self, request, *args, **kwargs):
+        """
+        GET request handler.
+
+        Args:
+            request: The current request
+        """
+        obj = self.get_object(**kwargs)
+        form = ConfirmationForm(initial=request.GET)
+
+        try:
+            dependent_objects = self._get_dependent_objects(obj)
+        except ProtectedError as e:
+            return self._handle_protected_objects(obj, e.protected_objects, request, e)
+        except RestrictedError as e:
+            return self._handle_protected_objects(obj, e.restricted_objects, request, e)
+
+        # If this is an HTMX request, return only the rendered deletion form as modal content
+        if htmx_partial(request):
+            viewname = get_viewname(self.queryset.model, action='delete')
+            form_url = reverse(viewname, kwargs={'pk': obj.pk, 'ipaddress_pk': obj.ip_address.pk})
+            return render(request, 'htmx/delete_form.html', {
+                'object': obj,
+                'object_type': self.queryset.model._meta.verbose_name,
+                'form': form,
+                'form_url': form_url,
+                'dependent_objects': dependent_objects,
+                **self.get_extra_context(request, obj),
+            })
+
+
 
 class IPAddressDNSNameRecreateView(PermissionRequiredMixin, View):
     permission_required = 'ipam.change_ipaddress'
