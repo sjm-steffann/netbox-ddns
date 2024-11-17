@@ -11,6 +11,8 @@ from netbox_ddns.background_tasks import dns_create
 from netbox_ddns.forms import ExtraDNSNameEditForm
 from netbox_ddns.models import DNSStatus, ExtraDNSName
 from netbox_ddns.utils import normalize_fqdn
+from utilities.forms import ConfirmationForm
+from utilities.views import get_viewname
 
 try:
     # NetBox <= 2.9
