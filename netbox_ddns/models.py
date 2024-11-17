@@ -12,7 +12,7 @@ from dns import rcode
 from dns.tsig import HMAC_MD5, HMAC_SHA1, HMAC_SHA224, HMAC_SHA256, HMAC_SHA384, HMAC_SHA512
 from netaddr import IPNetwork, ip
 from typing import Optional
-
+from netbox.models import NetBoxModel
 from ipam.fields import IPNetworkField
 from ipam.models import IPAddress
 from .utils import normalize_fqdn
@@ -325,7 +325,7 @@ class DNSStatus(models.Model):
         return format_html('<span style="color:{colour}">{output}</span', colour=colour, output=output)
 
 
-class ExtraDNSName(models.Model):
+class ExtraDNSName(NetBoxModel):
     ip_address = models.ForeignKey(
         to=IPAddress,
         verbose_name=_('IP address'),
@@ -367,7 +367,7 @@ class ExtraDNSName(models.Model):
         return self.name
 
     def get_absolute_url(self):
-        return reverse('plugins:netbox_ddns:extradnsname_edit', args=[self.ip_address.pk, self.pk])
+        return reverse('plugins:netbox_ddns:extradnsname', args=[self.ip_address.pk, self.pk])
 
     def clean(self):
         # Ensure trailing dots from domain-style fields
