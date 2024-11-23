@@ -19,6 +19,12 @@ FORWARD_DNS = """
 """
 
 ACTIONS = """
+    {% if perms.netbox_ddns.view_extradnsname %}
+        <a href="{% url 'plugins:netbox_ddns:extradnsname' pk=record.pk %}" 
+           class="btn btn-info">
+            <i class="mdi mdi-eye" aria-hidden="true"></i>
+        </a>
+    {% endif %}
     {% if perms.netbox_ddns.change_extradnsname %}
         <a href="{% url 'plugins:netbox_ddns:extradnsname_edit' pk=record.pk %}" 
            class="btn btn-warning">
