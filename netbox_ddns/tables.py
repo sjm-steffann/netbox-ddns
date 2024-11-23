@@ -19,14 +19,20 @@ FORWARD_DNS = """
 """
 
 ACTIONS = """
+    {% if perms.netbox_ddns.view_extradnsname %}
+        <a href="{% url 'plugins:netbox_ddns:extradnsname' pk=record.pk %}" 
+           class="btn btn-info">
+            <i class="mdi mdi-eye" aria-hidden="true"></i>
+        </a>
+    {% endif %}
     {% if perms.netbox_ddns.change_extradnsname %}
-        <a href="{% url 'plugins:netbox_ddns:extradnsname_edit' ipaddress_pk=record.ip_address.pk pk=record.pk %}" 
+        <a href="{% url 'plugins:netbox_ddns:extradnsname_edit' pk=record.pk %}" 
            class="btn btn-warning">
             <i class="mdi mdi-pencil" aria-hidden="true"></i>
         </a>
     {% endif %}
     {% if perms.netbox_ddns.delete_extradnsname %}
-        <a href="{% url 'plugins:netbox_ddns:extradnsname_delete' ipaddress_pk=record.ip_address.pk pk=record.pk %}"
+        <a href="{% url 'plugins:netbox_ddns:extradnsname_delete' pk=record.pk %}"
            class="btn btn-danger">
             <i class="mdi mdi-trash-can-outline" aria-hidden="true"></i>
         </a>

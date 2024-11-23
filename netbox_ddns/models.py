@@ -367,7 +367,7 @@ class ExtraDNSName(NetBoxModel):
         return self.name
 
     def get_absolute_url(self):
-        return reverse('plugins:netbox_ddns:extradnsname', args=[self.ip_address.pk, self.pk])
+        return reverse('plugins:netbox_ddns:extradnsname', args=[self.pk])
 
     def clean(self):
         # Ensure trailing dots from domain-style fields

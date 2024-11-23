@@ -16,101 +16,41 @@ from utilities.forms import ConfirmationForm
 from utilities.htmx import htmx_partial
 from utilities.views import get_viewname
 
-try:
-    # NetBox <= 2.9
-    from utilities.views import ObjectDeleteView, ObjectEditView
-except ImportError:
-    # NetBox >= 2.10
-    from netbox.views.generic import ObjectDeleteView, ObjectEditView, ObjectView
+from netbox.views.generic import ObjectDeleteView, ObjectEditView, ObjectView
 
 
-# noinspection PyMethodMayBeStatic
-class ExtraDNSNameObjectMixin:
-    def get_object(self, *args, **kwargs):
-        # NetBox < 3.2.0
-        if not kwargs and len(args) == 1:
-            kwargs = args[0]
-        elif len(args) > 1:
-            raise TypeError('Method takes 1 positional argument but more were given')
-
-        if 'ipaddress_pk' not in kwargs:
-            raise Http404
-
-        ip_address = get_object_or_404(IPAddress, pk=kwargs['ipaddress_pk'])
-
-        if 'pk' in kwargs:
-            return get_object_or_404(ExtraDNSName, ip_address=ip_address, pk=kwargs['pk'])
-
-        return ExtraDNSName(ip_address=ip_address)
-
-    def get_return_url(self, request, obj=None):
-        # First, see if `return_url` was specified as a query parameter or form data. Use this URL only if it's
-        # considered safe.
-        return_url = request.GET.get('return_url') or request.POST.get('return_url')
-        if return_url and return_url.startswith('/'):
-            return return_url
-
-        # Otherwise check we have an object and can return to its ip-address
-        elif obj is not None and obj.ip_address is not None:
-            return obj.ip_address.get_absolute_url()
-
-        # If all else fails, return home. Ideally this should never happen.
-        return reverse('home')
-
-
-class ExtraDNSNameCreateView(PermissionRequiredMixin, ExtraDNSNameObjectMixin, ObjectEditView):
+class ExtraDNSNameCreateView(PermissionRequiredMixin, ObjectEditView):
     permission_required = 'netbox_ddns.add_extradnsname'
     queryset = ExtraDNSName.objects.all()
     form = ExtraDNSNameEditForm
-    # NetBox < 3.2.0
-    @property
-    def model_form(self):
-        return self.form
+
+    def get_object(self, *args, **kwargs):
+        ip_address = get_object_or_404(IPAddress, pk=kwargs['ipaddress_pk'])
+        return ExtraDNSName(ip_address=ip_address)
 
 
-class ExtraDNSNameView(PermissionRequiredMixin,ExtraDNSNameObjectMixin,ObjectView):
+class ExtraDNSNameView(PermissionRequiredMixin, ObjectView):
     permission_required = 'netbox_ddns.view_extradnsname'
     queryset = ExtraDNSName.objects.all()
 
-class ExtraDNSNameEditView(ExtraDNSNameCreateView):
+
+class ExtraDNSNameEditView(PermissionRequiredMixin, ObjectEditView):
     permission_required = 'netbox_ddns.change_extradnsname'
+    queryset = ExtraDNSName.objects.all()
+    form = ExtraDNSNameEditForm
+
+    def get_object(self, *args, **kwargs):
+        return get_object_or_404(ExtraDNSName, pk=kwargs['pk'])
 
 
-class ExtraDNSNameDeleteView(PermissionRequiredMixin, ExtraDNSNameObjectMixin, ObjectDeleteView):
+class ExtraDNSNameDeleteView(PermissionRequiredMixin, ObjectDeleteView):
     permission_required = 'netbox_ddns.delete_extradnsname'
     queryset = ExtraDNSName.objects.all()
 
-    # Override request handler to fix the error on delete GET due to missing reverse route argument
-    def get(self, request, *args, **kwargs):
-        """
-        GET request handler.
-
-        Args:
-            request: The current request
-        """
-        obj = self.get_object(**kwargs)
-        form = ConfirmationForm(initial=request.GET)
-
-        try:
-            dependent_objects = self._get_dependent_objects(obj)
-        except ProtectedError as e:
-            return self._handle_protected_objects(obj, e.protected_objects, request, e)
-        except RestrictedError as e:
-            return self._handle_protected_objects(obj, e.restricted_objects, request, e)
-
-        # If this is an HTMX request, return only the rendered deletion form as modal content
-        if htmx_partial(request):
-            viewname = get_viewname(self.queryset.model, action='delete')
-            form_url = reverse(viewname, kwargs={'pk': obj.pk, 'ipaddress_pk': obj.ip_address.pk})
-            return render(request, 'htmx/delete_form.html', {
-                'object': obj,
-                'object_type': self.queryset.model._meta.verbose_name,
-                'form': form,
-                'form_url': form_url,
-                'dependent_objects': dependent_objects,
-                **self.get_extra_context(request, obj),
-            })
-
+    def get_return_url(self, request, obj=None):
+        if obj and obj.ip_address:
+            return obj.ip_address.get_absolute_url()
+        return super().get_return_url(request, obj)
 
 
 class IPAddressDNSNameRecreateView(PermissionRequiredMixin, View):
