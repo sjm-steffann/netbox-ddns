@@ -74,7 +74,7 @@
             {% endif %}
             {% if request.user|can_change:object %}
                 {% load i18n %}
-                <a href="{% url 'plugins:netbox_ddns:extradnsname_edit' ipaddress_pk=object.ip_address.pk pk=object.pk %}"
+                <a href="{% url 'plugins:netbox_ddns:extradnsname_edit' pk=object.pk %}"
                    class="btn btn-yellow" role="button">
                     <i class="mdi mdi-pencil" aria-hidden="true"></i> {% trans "Edit" %}
                 </a>
@@ -82,7 +82,7 @@
             {% if request.user|can_delete:object %}
                 {% load i18n %}
                 <a href="#"
-                   hx-get="{% url 'plugins:netbox_ddns:extradnsname_delete' ipaddress_pk=object.ip_address.pk pk=object.pk %}"
+                   hx-get="{% url 'plugins:netbox_ddns:extradnsname_delete' pk=object.pk %}"
                    hx-target="#htmx-modal-content"
                    hx-swap="innerHTML"
                    hx-select="form"
